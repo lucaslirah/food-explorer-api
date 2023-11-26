@@ -1,4 +1,3 @@
-const AppError = require('../utils/AppError');
 const knex = require('../database/knex');
 
 class DishesController{
@@ -55,14 +54,36 @@ class DishesController{
             const filterIngredients = ingredients.split(',').map(ing => ing.trim());
 
             dishes = await knex('ingredients')
-            .whereIn('name', filterIngredients);
+            .select([
+                'dishes.id',
+                'dishes.name',
+                'dishes.description',
+                'dishes.price',
+                'dishes.picture'
+            ])
+            .whereLike('dishes.name', `%${name}%`)
+            .whereIn('ingredients.name', filterIngredients)
+            .innerJoin('dishes', 'dishes.id', 'ingredients.dish_id')
+            .groupBy('dishes.id')
+            .orderBy('dishes.name');
         }else{
             dishes = await knex('dishes')
             .whereLike('name', `%${name}%`)
             .orderBy('name');
         }
 
-        return response.json(dishes);
+        const ingredientsDish = await knex('ingredients');
+
+        const dishesWithIngredients = dishes.map(dish => {
+            const dishIngs = ingredientsDish.filter(ing => ing.dish_id === dish.id);
+
+            return{
+                ...dish,
+                ingredients: dishIngs
+            }
+        });
+
+        return response.json(dishesWithIngredients);
     }
 }
 
