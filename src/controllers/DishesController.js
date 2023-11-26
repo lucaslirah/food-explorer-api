@@ -47,9 +47,22 @@ class DishesController{
     }
 
     async index(request, response){
-        const dishes = await knex('dishes').orderBy('name');
+        const { name, ingredients } = request.query;
 
-        return response.json(dishes)
+        let dishes;
+
+        if(ingredients){
+            const filterIngredients = ingredients.split(',').map(ing => ing.trim());
+
+            dishes = await knex('ingredients')
+            .whereIn('name', filterIngredients);
+        }else{
+            dishes = await knex('dishes')
+            .whereLike('name', `%${name}%`)
+            .orderBy('name');
+        }
+
+        return response.json(dishes);
     }
 }
 
