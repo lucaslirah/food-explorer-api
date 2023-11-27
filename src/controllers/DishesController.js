@@ -1,4 +1,6 @@
 const knex = require('../database/knex');
+const AppErr = require('../utils/AppError');
+const { format, setGlobalDateMasks } = require("fecha");
 
 class DishesController{
     async create(request, response){
@@ -84,6 +86,55 @@ class DishesController{
         });
 
         return response.json(dishesWithIngredients);
+    }
+
+    async update(request, response){
+        const { name, description, price, picture, type, ingredients } = request.body;
+        const { id } = request.params;
+
+        const [dish] = await knex('dishes').where({ id });
+
+        if(!dish){
+            throw new AppErr('Prato não encontrado!');
+        }
+
+        dish.name = name ?? dish.name;
+        dish.description = description ?? dish.description;
+        dish.price = price ?? dish.price;
+        dish.picture = picture ?? dish.picture;
+        dish.type = type ?? dish.type;
+        dish.ingredients = ingredients ?? dish.ingredients;
+
+        setGlobalDateMasks({
+            dateTimeMask: 'YYYY-MM-DD HH:mm:ss'
+        });
+        
+        const timestamp = format(Date.now(), 'dateTimeMask');
+
+        await knex('dishes')
+        .where({ id })
+        .update({
+            name: dish.name,
+            description: dish.description,
+            price: dish.price,
+            picture: dish.picture,
+            type: dish.type,
+            updated_at: timestamp
+        });
+
+        await knex('ingredients').where({ dish_id: dish.id }).delete();
+
+        const ingredientsInsert = ingredients.map(name => {
+            return{
+                name,
+                dish_id: dish.id
+            }
+        });
+        
+        await knex('ingredients').insert(ingredientsInsert);
+
+
+        return response.status(200).json();
     }
 }
 
