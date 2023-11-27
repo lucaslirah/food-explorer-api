@@ -3,13 +3,13 @@ const authConfig = require('../configs/auth');
 const { verify } = require('jsonwebtoken');
 
 function ensureAuthenticated(request, response, next){
-    const authHeader = request.headers;
+    const authHeader = request.headers.authorization;
 
-    if(!authHeader.cookie){
+    if(!authHeader){
         throw new AppError('JWT Token inválido', 401);
     }
 
-    const [, token] = authHeader.cookie.split('token=');
+    const [, token] = authHeader.split(' ');
     
     try{
         const { role, sub: user_id } = verify(token, authConfig.jwt.secret);

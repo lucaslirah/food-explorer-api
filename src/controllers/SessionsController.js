@@ -26,16 +26,16 @@ class SessionsController{
             expiresIn
         });
 
-        response.cookie('secret', token, {
-            httpOnly: true,
-            sameSite: 'none',
-            secure: true,
-            maxAge: 15 * 60 * 1000
-        });
+        // response.cookie('secret', token, {
+        //     httpOnly: true,
+        //     sameSite: 'none',
+        //     secure: true,
+        //     maxAge: 15 * 60 * 1000
+        // });
 
         delete user.password;
         
-        return response.status(201).json({ user });
+        return response.status(201).json({ user, token });
     }
 }
 
