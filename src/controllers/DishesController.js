@@ -4,13 +4,12 @@ const { format, setGlobalDateMasks } = require("fecha");
 
 class DishesController{
     async create(request, response){
-        const { name, description, price, picture, type, ingredients } = request.body;
+        const { name, description, price, type, ingredients } = request.body;
 
         const [dish_id] = await knex('dishes').insert({
             name,
             description,
             price,
-            picture,
             type
         });
 
@@ -89,7 +88,7 @@ class DishesController{
     }
 
     async update(request, response){
-        const { name, description, price, picture, type, ingredients } = request.body;
+        const { name, description, price, type, ingredients } = request.body;
         const { id } = request.params;
 
         const [dish] = await knex('dishes').where({ id });
@@ -101,9 +100,7 @@ class DishesController{
         dish.name = name ?? dish.name;
         dish.description = description ?? dish.description;
         dish.price = price ?? dish.price;
-        dish.picture = picture ?? dish.picture;
         dish.type = type ?? dish.type;
-        dish.ingredients = ingredients ?? dish.ingredients;
 
         setGlobalDateMasks({
             dateTimeMask: 'YYYY-MM-DD HH:mm:ss'
@@ -117,7 +114,6 @@ class DishesController{
             name: dish.name,
             description: dish.description,
             price: dish.price,
-            picture: dish.picture,
             type: dish.type,
             updated_at: timestamp
         });
