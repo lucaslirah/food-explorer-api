@@ -5,7 +5,6 @@ const { hash } = require('bcryptjs');
 class UsersController{
     async create(request, response){
         const { name, password, email } = request.body;
-
         
         if(!name){
             throw new AppError("Por favor, insira um nome!");
