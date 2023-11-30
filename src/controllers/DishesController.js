@@ -1,19 +1,29 @@
 const knex = require('../database/knex');
 const AppErr = require('../utils/AppError');
 const { format, setGlobalDateMasks } = require("fecha");
+const DiskStorage = require('../providers/DiskStorage');
 
 class DishesController{
     async create(request, response){
         const { name, description, price, type, ingredients } = request.body;
 
+        const diskStorage = new DiskStorage();
+
+        const pictureFilename = request.file.filename;
+
+        const filename = await diskStorage.saveFile(pictureFilename);
+
         const [dish_id] = await knex('dishes').insert({
             name,
             description,
             price,
+            picture: filename,
             type
         });
 
-        const ingredientsInsert = ingredients.map(name => {
+        const ingredientsArray = ingredients.split(',').map(ing => ing.trim());
+
+        const ingredientsInsert = ingredientsArray.map(name => {
             return {
                 name,
                 dish_id
@@ -29,8 +39,13 @@ class DishesController{
     async show(request, response){
         const { id } = request.params;
 
-        const dish = await knex('dishes').where({ id }).first();
-        const ingredients = await knex('ingredients').where({ dish_id: id }).orderBy('name');
+        const dish = await knex('dishes')
+        .where({ id })
+        .first();
+        
+        const ingredients = await knex('ingredients')
+        .where({ dish_id: id })
+        .orderBy('name');
 
         return response.json({
             ...dish,
@@ -88,49 +103,39 @@ class DishesController{
     }
 
     async update(request, response){
-        const { name, description, price, type, ingredients } = request.body;
-        const { id } = request.params;
+        const { id, name, description, price, type } = request.body;
+        const pictureFilename = request.file.filename;
 
+        const diskStorage = new DiskStorage();
+
+        setGlobalDateMasks({
+            dateTimeMask: 'YYYY-MM-DD HH:mm:ss'
+        });
+        
         const [dish] = await knex('dishes').where({ id });
 
         if(!dish){
             throw new AppErr('Prato não encontrado!');
         }
 
+        if(dish.picture){
+            await diskStorage.deleteFile(dish.picture);
+        }
+
+        const filename = await diskStorage.saveFile(pictureFilename);
+
+        const timestamp = format(Date.now(), 'dateTimeMask');
+
+        dish.picture = filename;
+        dish.updated_at = timestamp;
         dish.name = name ?? dish.name;
         dish.description = description ?? dish.description;
         dish.price = price ?? dish.price;
         dish.type = type ?? dish.type;
 
-        setGlobalDateMasks({
-            dateTimeMask: 'YYYY-MM-DD HH:mm:ss'
-        });
-        
-        const timestamp = format(Date.now(), 'dateTimeMask');
+        await knex('dishes').where({ id: dish.id }).update(dish);
 
-        await knex('dishes')
-        .where({ id })
-        .update({
-            name: dish.name,
-            description: dish.description,
-            price: dish.price,
-            type: dish.type,
-            updated_at: timestamp
-        });
-
-        await knex('ingredients').where({ dish_id: dish.id }).delete();
-
-        const ingredientsInsert = ingredients.map(name => {
-            return{
-                name,
-                dish_id: dish.id
-            }
-        });
-        
-        await knex('ingredients').insert(ingredientsInsert);
-
-
-        return response.status(200).json();
+        return response.status(200).json(dish);
     }
 }
 
