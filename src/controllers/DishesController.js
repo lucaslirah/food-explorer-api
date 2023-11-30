@@ -2,23 +2,30 @@ const knex = require('../database/knex');
 const AppErr = require('../utils/AppError');
 const { format, setGlobalDateMasks } = require("fecha");
 const DiskStorage = require('../providers/DiskStorage');
+const diskStorage = new DiskStorage();
+
+setGlobalDateMasks({
+    dateTimeMask: 'YYYY-MM-DD HH:mm:ss'
+});
 
 class DishesController{
     async create(request, response){
         const { name, description, price, type, ingredients } = request.body;
 
-        const diskStorage = new DiskStorage();
-
         const pictureFilename = request.file.filename;
 
         const filename = await diskStorage.saveFile(pictureFilename);
+
+        const timestamp = format(Date.now(), 'dateTimeMask');
 
         const [dish_id] = await knex('dishes').insert({
             name,
             description,
             price,
             picture: filename,
-            type
+            type,
+            created_at: timestamp,
+            updated_at: timestamp
         });
 
         const ingredientsArray = ingredients.split(',').map(ing => ing.trim());
@@ -105,12 +112,6 @@ class DishesController{
     async update(request, response){
         const { id, name, description, price, type } = request.body;
         const pictureFilename = request.file.filename;
-
-        const diskStorage = new DiskStorage();
-
-        setGlobalDateMasks({
-            dateTimeMask: 'YYYY-MM-DD HH:mm:ss'
-        });
         
         const [dish] = await knex('dishes').where({ id });
 
