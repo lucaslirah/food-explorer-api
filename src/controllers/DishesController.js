@@ -90,6 +90,7 @@ class DishesController{
                 'dishes.description',
                 'dishes.price',
                 'dishes.picture',
+                'dishes.type',
             ], 'ingredients.name as name_ingredients')
             .innerJoin('ingredients', 'dishes.id', '=', 'ingredients.dish_id')
             .whereLike('dishes.name', `%${query}%`)
@@ -102,8 +103,8 @@ class DishesController{
     }
 
     async update(request, response){
-        const { id, name, description, price, type } = request.body;
-        const pictureFilename = request.file.filename;
+        const { id } = request.params;
+        const { name, description, price, type, ingredients } = request.body;
         
         const [dish] = await knex('dishes').where({ id });
 
@@ -111,15 +112,16 @@ class DishesController{
             throw new AppErr('Prato não encontrado!');
         }
 
-        if(dish.picture){
+        const pictureFilename = request.file?.filename;
+
+        if(dish.picture && pictureFilename){
             await diskStorage.deleteFile(dish.picture);
+            const filename = await diskStorage.saveFile(pictureFilename);
+            dish.picture = filename;
         }
 
-        const filename = await diskStorage.saveFile(pictureFilename);
-
         const timestamp = format(Date.now(), 'dateTimeMask');
-
-        dish.picture = filename;
+       
         dish.updated_at = timestamp;
         dish.name = name ?? dish.name;
         dish.description = description ?? dish.description;
@@ -127,6 +129,19 @@ class DishesController{
         dish.type = type ?? dish.type;
 
         await knex('dishes').where({ id: dish.id }).update(dish);
+
+        await knex('ingredients').where({ dish_id: id }).delete();
+
+        const ingredientsArray = ingredients.split(',').map(ing => ing.trim());
+
+        const ingredientsInsert = ingredientsArray.map(name => {
+            return {
+                name,
+                dish_id: id
+            }
+        });
+
+        await knex('ingredients').insert(ingredientsInsert);
 
         return response.status(200).json(dish);
     }

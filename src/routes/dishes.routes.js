@@ -18,6 +18,6 @@ dishesRoutes.post('/create', upload.single('picture'),dishesController.create);
 dishesRoutes.get('/:id', dishesController.show);
 dishesRoutes.delete('/:id', dishesController.delete);
 dishesRoutes.get('/', dishesController.index);
-dishesRoutes.put('/edit', upload.single('picture'), dishesController.update);
+dishesRoutes.put('/edit/:id', upload.single('picture'), dishesController.update);
 
 module.exports = dishesRoutes;
